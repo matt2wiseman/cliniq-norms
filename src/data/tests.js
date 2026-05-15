@@ -449,7 +449,7 @@ export const TESTS = [
     id: 'kneeToWall',
     label: 'Knee to Wall (Weight-Bearing Dorsiflexion)',
     category: 'flexibility',
-    description: 'Weight-bearing ankle dorsiflexion distance (cm from wall) or angle (°) — L and R',
+    description: 'Weight-bearing ankle dorsiflexion distance from wall in cm — L and R',
     unit: 'cm',
     inputType: 'kneeToWall',
     isROM: false,
@@ -528,6 +528,17 @@ export const TESTS = [
   },
 
   // ─── NEUROLOGICAL ─────────────────────────────────────────────────────────
+  {
+    id: 'tardieuScale',
+    label: 'Modified Tardieu Scale',
+    category: 'neurological',
+    description: 'Spasticity assessment — R1 (angle of catch at fast velocity), R2 (full passive ROM at slow velocity), and X quality grade per muscle group',
+    unit: null,
+    inputType: 'tardieuScale',
+    requiresAge: false,
+    requiresSex: false,
+    citation: 'Gracies JM, et al. (2010). Neurorehabil Neural Repair, 24(7), 613-626. | Haugh AB, et al. (2006). Clin Rehabil, 20(9), 801-811.',
+  },
   {
     id: 'sensation',
     label: 'Sensation Testing',

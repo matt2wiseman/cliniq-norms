@@ -161,12 +161,27 @@ function generateClinicalNote(demographics, selectedTests, results) {
         lines.push(`  ${test.label}: ${valueStr}${categoryStr ? '  — ' + categoryStr : ''}`)
         continue
       } else if (test.inputType === 'kneeToWall') {
-        const unit = result.unit ?? 'cm'
         const parts = []
-        if (result.left != null) parts.push(`L: ${result.left}${unit}`)
-        if (result.right != null) parts.push(`R: ${result.right}${unit}`)
+        if (result.left != null) parts.push(`L: ${result.left} cm`)
+        if (result.right != null) parts.push(`R: ${result.right} cm`)
         valueStr = parts.join('  /  ')
         scoreResult = scoreTest(testId, result, demographics)
+      } else if (test.inputType === 'tardieuScale') {
+        if (!result.assessments?.length) { lines.push(`  ${test.label}: Not recorded`); continue }
+        const tardRes = scoreTest(testId, result, demographics)
+        if (!tardRes?.assessments?.length) { lines.push(`  ${test.label}: Not recorded`); continue }
+        lines.push(`  ${test.label}:`)
+        for (const a of tardRes.assessments) {
+          const label = a.muscleGroupLabel ?? a.muscleGroup
+          const side = a.side ? ` (${a.side})` : ''
+          const parts = []
+          if (a.r1 !== '' && a.r1 != null) parts.push(`R1: ${a.r1}°`)
+          if (a.r2 !== '' && a.r2 != null) parts.push(`R2: ${a.r2}°`)
+          if (a.spasticityAngle != null) parts.push(`Spasticity angle: ${a.spasticityAngle}°`)
+          if (a.xGrade !== '' && a.xGrade != null) parts.push(`X grade: ${a.xGrade}`)
+          lines.push(`    ${label}${side}: ${parts.join(', ')}${a.notes ? ' — ' + a.notes : ''}`)
+        }
+        continue
       } else if (test.inputType === 'spo2') {
         if (result.resting != null) {
           valueStr = `${result.resting}%`
@@ -293,6 +308,13 @@ function generatePatientSummary(demographics, selectedTests, results) {
 
       if (test.inputType === 'notes') {
         if (result.notes) lines.push(`${test.label}: ${result.notes}`)
+        continue
+      }
+
+      if (test.inputType === 'tardieuScale') {
+        if (result.assessments?.length) {
+          lines.push(`A spasticity assessment (Modified Tardieu Scale) was completed for ${result.assessments.length} muscle group${result.assessments.length !== 1 ? 's' : ''}. Please discuss the detailed findings with your clinician.`)
+        }
         continue
       }
 

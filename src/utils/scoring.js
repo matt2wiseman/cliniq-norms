@@ -366,6 +366,35 @@ export function scoreSingleROM(value, jointId) {
   return scoreROMSide(value, joint)
 }
 
+// ─── Modified Tardieu Scale ───────────────────────────────────────────────────
+// Source: Gracies JM, et al. (2010). Neurorehabil Neural Repair, 24(7), 613-626.
+// Haugh AB, et al. (2006). Clin Rehabil, 20(9), 801-811.
+const TARDIEU_LABELS = {
+  elbowFlexors: 'Elbow Flexors', elbowExtensors: 'Elbow Extensors',
+  wristFlexors: 'Wrist Flexors', wristExtensors: 'Wrist Extensors',
+  hipAdductors: 'Hip Adductors', kneeFlexors: 'Knee Flexors',
+  kneeExtensors: 'Knee Extensors', anklePlantarflexors: 'Ankle Plantarflexors',
+}
+
+export function scoreTardieu(resultEntry) {
+  if (!resultEntry?.assessments?.length) return null
+  const assessments = resultEntry.assessments
+    .filter(a => a.muscleGroup)
+    .map(a => {
+      const r1 = parseFloat(a.r1), r2 = parseFloat(a.r2)
+      return {
+        ...a,
+        muscleGroupLabel: TARDIEU_LABELS[a.muscleGroup] ?? a.muscleGroup,
+        spasticityAngle: (!isNaN(r1) && !isNaN(r2)) ? r2 - r1 : null,
+      }
+    })
+  if (!assessments.length) return null
+  return {
+    assessments,
+    source: 'Modified Tardieu Scale — Gracies JM, et al. (2010). Neurorehabil Neural Repair, 24(7), 613-626. | Haugh AB, et al. (2006). Clin Rehabil, 20(9), 801-811.',
+  }
+}
+
 // ─── SpO2 ─────────────────────────────────────────────────────────────────────
 export function scoreSpO2(resultEntry) {
   const resting = parseFloat(resultEntry?.resting)
@@ -792,6 +821,9 @@ export function scoreTest(testId, resultEntry, demographics) {
       return { left: l, right: r }
     }
 
+    case 'tardieuScale':
+      return scoreTardieu(resultEntry)
+
     // Notes-only tests — no scoring
     case 'sensation':
       return null
@@ -880,12 +912,6 @@ export function buildGaugeProps(testId, scoreRes, rawValue = null, demographics 
     { label: 'Within Normal Range', color: G, width: 60 },
     { label: 'Above Normal Range',  color: B, width: 20 },
   ]
-  // ROM 2-zone
-  const rom2 = [
-    { label: 'Outside Normal Range', color: R, width: 30 },
-    { label: 'Within Normal Range',  color: G, width: 70 },
-  ]
-
   // ─ per-test zone config ─
   const configs = {
     restingHR: () => RESTING_HR_NORMS.zones.map((z, i) => ({
@@ -901,12 +927,12 @@ export function buildGaugeProps(testId, scoreRes, rawValue = null, demographics 
     ],
 
     bmi: () => [
-      { label: 'Underweight', color: B, width: 12 },
-      { label: 'Normal Weight', color: G, width: 25 },
-      { label: 'Overweight',  color: A, width: 18 },
-      { label: 'Obese I',     color: O, width: 18 },
-      { label: 'Obese II',    color: R, width: 14 },
-      { label: 'Obese III',   color: R, width: 13 },
+      { label: 'Underweight',     color: B, width: 12 },
+      { label: 'Normal Weight',   color: G, width: 25 },
+      { label: 'Overweight',      color: A, width: 18 },
+      { label: 'Obese Class I',   color: O, width: 18 },
+      { label: 'Obese Class II',  color: R, width: 14 },
+      { label: 'Obese Class III', color: R, width: 13 },
     ],
 
     waistCirc: () => [
@@ -923,9 +949,9 @@ export function buildGaugeProps(testId, scoreRes, rawValue = null, demographics 
 
     bodyFatPct: () => [
       { label: 'Underfat',   color: B, width: 15 },
-      { label: 'Healthy',    color: G, width: 35 },
-      { label: 'Borderline', color: L, width: 15 },
-      { label: 'Overfat',    color: A, width: 20 },
+      { label: 'Lean / Fit', color: G, width: 30 },
+      { label: 'Acceptable', color: L, width: 15 },
+      { label: 'Overweight', color: A, width: 25 },
       { label: 'Obese',      color: R, width: 15 },
     ],
 
@@ -1004,11 +1030,11 @@ export function buildGaugeProps(testId, scoreRes, rawValue = null, demographics 
     ],
 
     sitAndReach: () => [
-      { label: 'Poor',          color: R, width: 20 },
-      { label: 'Fair',          color: O, width: 20 },
-      { label: 'Average',       color: A, width: 20 },
-      { label: 'Good',          color: G, width: 20 },
-      { label: 'Excellent',     color: B, width: 20 },
+      { label: 'Very Poor',  color: R, width: 20 },
+      { label: 'Poor',       color: O, width: 20 },
+      { label: 'Average',    color: A, width: 20 },
+      { label: 'Good',       color: G, width: 20 },
+      { label: 'Excellent',  color: B, width: 20 },
     ],
 
     tug: () => [
@@ -1057,7 +1083,7 @@ export function buildGaugeProps(testId, scoreRes, rawValue = null, demographics 
     'ankleDorsi', 'anklePlantar', 'ankleInv', 'ankleEve',
     'subtalarInv', 'subtalarEve',
   ]
-  if (ROM_IDS.includes(testId)) return { zones: rom2, activeCategory: cat, markerPct: null }
+  if (ROM_IDS.includes(testId)) return null  // ROM: badge only, no gauge
 
   const build = configs[testId]
   if (!build) return null

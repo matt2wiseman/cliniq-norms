@@ -475,47 +475,188 @@ function McGillBatteryInput({ result, onChange }) {
 
 // ─── Knee to Wall Input ───────────────────────────────────────────────────────
 function KneeToWallInput({ result, onChange }) {
-  const unit = result?.unit ?? 'cm'
-
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500">Measurement unit:</span>
-        {['cm', '°'].map(u => (
-          <button
-            key={u}
-            onClick={() => onChange({ ...result, unit: u, left: null, right: null })}
-            className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
-              unit === u ? 'bg-brand-navy text-white border-brand-navy' : 'border-gray-300 text-gray-600 hover:border-brand-navy'
-            }`}
-          >
-            {u}
-          </button>
-        ))}
-      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Left</label>
-          <NumericInput
-            value={result?.left}
-            onChange={v => onChange({ ...result, left: v })}
-            placeholder={unit === 'cm' ? 'e.g. 10' : 'e.g. 40'}
-            unit={unit}
-          />
+          <NumericInput value={result?.left} onChange={v => onChange({ ...result, left: v, unit: 'cm' })} placeholder="e.g. 10" unit="cm" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Right</label>
-          <NumericInput
-            value={result?.right}
-            onChange={v => onChange({ ...result, right: v })}
-            placeholder={unit === 'cm' ? 'e.g. 10' : 'e.g. 40'}
-            unit={unit}
-          />
+          <NumericInput value={result?.right} onChange={v => onChange({ ...result, right: v, unit: 'cm' })} placeholder="e.g. 10" unit="cm" />
         </div>
       </div>
-      {unit === 'cm' && (result?.left != null || result?.right != null) && (
+      {(result?.left != null || result?.right != null) && (
         <p className="text-xs text-gray-400 italic">Functional threshold: ≥9 cm from wall (Bennell et al., 1998)</p>
       )}
+    </div>
+  )
+}
+
+// ─── Modified Tardieu Scale ───────────────────────────────────────────────────
+const TARDIEU_MUSCLE_GROUPS = [
+  { value: 'elbowFlexors',        label: 'Elbow Flexors' },
+  { value: 'elbowExtensors',      label: 'Elbow Extensors' },
+  { value: 'wristFlexors',        label: 'Wrist Flexors' },
+  { value: 'wristExtensors',      label: 'Wrist Extensors' },
+  { value: 'hipAdductors',        label: 'Hip Adductors' },
+  { value: 'kneeFlexors',         label: 'Knee Flexors' },
+  { value: 'kneeExtensors',       label: 'Knee Extensors' },
+  { value: 'anklePlantarflexors', label: 'Ankle Plantarflexors' },
+]
+
+const TARDIEU_X_GRADES = [
+  { value: '0', label: '0 — No resistance throughout' },
+  { value: '1', label: '1 — Slight resistance, no clear catch' },
+  { value: '2', label: '2 — Clear catch, then release' },
+  { value: '3', label: '3 — Fatigable clonus (<10s)' },
+  { value: '4', label: '4 — Non-fatigable clonus (>10s)' },
+  { value: '5', label: '5 — Joint immovable' },
+]
+
+function TardieuInput({ result, onChange }) {
+  const assessments = result?.assessments ?? []
+
+  function addAssessment() {
+    onChange({ ...result, assessments: [...assessments, { id: Date.now(), muscleGroup: '', side: 'left', r1: '', r2: '', xGrade: '', notes: '' }] })
+  }
+
+  function updateAssessment(id, field, value) {
+    onChange({ ...result, assessments: assessments.map(a => a.id === id ? { ...a, [field]: value } : a) })
+  }
+
+  function removeAssessment(id) {
+    onChange({ ...result, assessments: assessments.filter(a => a.id !== id) })
+  }
+
+  return (
+    <div className="space-y-4">
+      {assessments.map(a => {
+        const r1 = parseFloat(a.r1), r2 = parseFloat(a.r2)
+        const spasticityAngle = (!isNaN(r1) && !isNaN(r2)) ? r2 - r1 : null
+        return (
+          <div key={a.id} className="p-3 bg-gray-50 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-700">Assessment</p>
+              <button onClick={() => removeAssessment(a.id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Muscle group</label>
+                <select
+                  value={a.muscleGroup}
+                  onChange={e => updateAssessment(a.id, 'muscleGroup', e.target.value)}
+                  className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-navy bg-white"
+                >
+                  <option value="">Select...</option>
+                  {TARDIEU_MUSCLE_GROUPS.map(mg => (
+                    <option key={mg.value} value={mg.value}>{mg.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Side</label>
+                <div className="flex gap-2 mt-1">
+                  {['left', 'right', 'bilateral'].map(s => (
+                    <button
+                      key={s}
+                      onClick={() => updateAssessment(a.id, 'side', s)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold border capitalize transition-colors ${
+                        a.side === s ? 'bg-brand-navy text-white border-brand-navy' : 'border-gray-300 text-gray-600 hover:border-brand-navy'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">R1 — angle of catch (°)</label>
+                <NumericInput value={a.r1 === '' ? null : a.r1} onChange={v => updateAssessment(a.id, 'r1', v ?? '')} placeholder="°" unit="°" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">R2 — full passive ROM (°)</label>
+                <NumericInput value={a.r2 === '' ? null : a.r2} onChange={v => updateAssessment(a.id, 'r2', v ?? '')} placeholder="°" unit="°" />
+              </div>
+            </div>
+            {spasticityAngle != null && (
+              <div className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm">
+                Spasticity angle (R2−R1): <strong>{spasticityAngle}°</strong>
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">X grade</label>
+              <select
+                value={a.xGrade}
+                onChange={e => updateAssessment(a.id, 'xGrade', e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-navy bg-white"
+              >
+                <option value="">Select grade...</option>
+                {TARDIEU_X_GRADES.map(g => (
+                  <option key={g.value} value={g.value}>{g.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Notes <span className="font-normal text-gray-400">(optional)</span></label>
+              <textarea
+                value={a.notes ?? ''}
+                onChange={e => updateAssessment(a.id, 'notes', e.target.value)}
+                placeholder="Clinical observations..."
+                rows={2}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-navy resize-none"
+              />
+            </div>
+          </div>
+        )
+      })}
+      <button
+        onClick={addAssessment}
+        className="w-full py-2.5 rounded-xl border-2 border-dashed border-brand-navy/30 text-brand-navy text-sm font-medium hover:border-brand-navy/60 hover:bg-brand-navy/5 transition-colors"
+      >
+        + Add muscle group
+      </button>
+    </div>
+  )
+}
+
+function TardieuScoreDisplay({ score }) {
+  if (!score?.assessments?.length) return null
+  const gradeColor = g => {
+    const n = parseInt(g)
+    if (isNaN(n)) return 'text-gray-700 bg-gray-100'
+    if (n <= 1) return 'text-green-700 bg-green-50'
+    if (n === 2) return 'text-amber-700 bg-amber-50'
+    return 'text-red-700 bg-red-50'
+  }
+  return (
+    <div className="space-y-3">
+      {score.assessments.map((a, i) => (
+        <div key={i} className="p-3 bg-gray-50 rounded-xl space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-800">
+              {a.muscleGroupLabel ?? a.muscleGroup}
+              {a.side && a.side !== 'bilateral' && <span className="ml-1.5 text-xs font-normal text-gray-500 capitalize">{a.side}</span>}
+              {a.side === 'bilateral' && <span className="ml-1.5 text-xs font-normal text-gray-500">bilateral</span>}
+            </span>
+            {a.xGrade !== '' && a.xGrade != null && (
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${gradeColor(a.xGrade)}`}>
+                Grade {a.xGrade}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-4 text-xs text-gray-600">
+            {a.r1 !== '' && a.r1 != null && <span>R1: <strong>{a.r1}°</strong></span>}
+            {a.r2 !== '' && a.r2 != null && <span>R2: <strong>{a.r2}°</strong></span>}
+            {a.spasticityAngle != null && <span>Spasticity angle: <strong>{a.spasticityAngle}°</strong></span>}
+          </div>
+          {a.notes && <p className="text-xs text-gray-500 italic">{a.notes}</p>}
+        </div>
+      ))}
+      {score.source && <p className="text-xs text-gray-400 leading-relaxed">{score.source}</p>}
     </div>
   )
 }
@@ -708,6 +849,10 @@ export function TestCard({ test, demographics, result, onResultChange, readonly 
       if (result?.left == null && result?.right == null) return null
       return scoreTest(test.id, result, demographics)
     }
+    if (test.inputType === 'tardieuScale') {
+      if (!result?.assessments?.length) return null
+      return scoreTest(test.id, result, demographics)
+    }
 
     let re = result
     if (test.id === 'waistHipRatio' && result?.waist && result?.hip) {
@@ -724,13 +869,14 @@ export function TestCard({ test, demographics, result, onResultChange, readonly 
     return scoreTest(test.id, re, demographics)
   }, [result, demographics, test.id, test.inputType])
 
-  const isMcGill  = test.inputType === 'mcGillBattery'
-  const isERIR    = test.inputType === 'erirRatio'
-  const isBilateral = score && typeof score === 'object' && 'left' in score && !isMcGill && !isERIR
-  const primaryScore = isMcGill || isERIR ? null
+  const isMcGill   = test.inputType === 'mcGillBattery'
+  const isERIR     = test.inputType === 'erirRatio'
+  const isTardieu  = test.inputType === 'tardieuScale'
+  const isBilateral = score && typeof score === 'object' && 'left' in score && !isMcGill && !isERIR && !isTardieu
+  const primaryScore = isMcGill || isERIR || isTardieu ? null
     : score && typeof score === 'object' && 'category' in score ? score
     : score?.primary ?? score?.left ?? null
-  const hasSingularScore = score && !isBilateral && !score.insufficient && !isMcGill && !isERIR && 'category' in score
+  const hasSingularScore = score && !isBilateral && !score.insufficient && !isMcGill && !isERIR && !isTardieu && 'category' in score
 
   const hasAnyResult = (() => {
     if (!result) return false
@@ -746,6 +892,7 @@ export function TestCard({ test, demographics, result, onResultChange, readonly 
     if (result.balanceScore != null || result.gaitScore != null || result.chairStandScore != null) return true
     if (result.flexor || result.extensor || result.sideBridgeLeft || result.sideBridgeRight) return true
     if (result.leftER || result.rightER) return true
+    if (result.assessments?.length > 0) return true
     return false
   })()
 
@@ -839,6 +986,8 @@ export function TestCard({ test, demographics, result, onResultChange, readonly 
               <ERIRInput result={result} onChange={onResultChange} />
             ) : test.inputType === 'kneeToWall' ? (
               <KneeToWallInput result={result} onChange={onResultChange} />
+            ) : test.inputType === 'tardieuScale' ? (
+              <TardieuInput result={result} onChange={onResultChange} />
             ) : test.id === 'sixMWT' ? (
               <div className="space-y-3">
                 <NumericInput
@@ -885,7 +1034,9 @@ export function TestCard({ test, demographics, result, onResultChange, readonly 
           {/* Chart / results section */}
           {hasAnyResult && score && (
             <div className="mt-5">
-              {isMcGill ? (
+              {isTardieu ? (
+                <TardieuScoreDisplay score={score} />
+              ) : isMcGill ? (
                 <McGillScoreDisplay score={score} />
               ) : isERIR ? (
                 <ERIRScoreDisplay score={score} />
